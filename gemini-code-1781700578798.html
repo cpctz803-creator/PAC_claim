@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ビルマルチ・クレーム検索システム</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-3xl mx-auto bg-white shadow-lg rounded-xl p-6 border border-slate-200">
+        <h1 class="text-xl md:text-2xl font-bold text-center text-blue-950 mb-6 border-b pb-4 border-blue-100">
+            🏢 ビル用マルチエアコン クレーム・不具合検索
+        </h1>
+
+        <div id="errorMessage" class="hidden mb-4 p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm"></div>
+
+        <div class="mb-5">
+            <label class="block text-sm font-bold text-slate-700 mb-2">【STEP 1】カテゴリ（種類）を選択してください</label>
+            <select id="categorySelect" onchange="updateItems()" class="w-full p-3 bg-white border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base">
+                <option value="">-- カテゴリを選択 --</option>
+            </select>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-sm font-bold text-slate-700 mb-2">【STEP 2】クレーム・現象を選択してください</label>
+            <select id="itemSelect" onchange="showResult()" disabled class="w-full p-3 bg-slate-100 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base disabled:opacity-50">
+                <option value="">-- 先にカテゴリを選択してください --</option>
+            </select>
+        </div>
+
+        <div id="resultCard" class="hidden border border-blue-200 rounded-lg bg-blue-50/50 p-5">
+            <h2 class="text-base md:text-lg font-bold text-blue-900 mb-4 flex items-center">
+                <span class="bg-blue-600 text-white rounded-full w-6 h-6 inline-flex items-center justify-center text-xs mr-2">!</span>
+                現象：<span id="txtPhenomenon"></span>
+            </h2>
+            
+            <div class="grid grid-cols-1 gap-4">
+                <div class="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
+                    <span class="text-xs font-bold text-red-600 block mb-1">🚨 主な原因（技術的要因）</span>
+                    <p id="txtCause" class="text-sm md:text-base text-slate-700 font-medium whitespace-pre-wrap"></p>
+                </div>
+                
+                <div class="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
+                    <span class="text-xs font-bold text-green-700 block mb-1">🛠️ 対処方法（現場対応・初期アクション）</span>
+                    <p id="txtAction" class="text-sm md:text-base text-slate-700 whitespace-pre-wrap"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let masterData = {}; // JSONから読み込んだデータを格納する変数
+
+        // ページ読み込み時に別ファイルのJSONデータを取得
+        window.onload = async function() {
+            try {
+                // 同じフォルダ内にある data.json を読み込む
+                const response = await fetch('data.json');
+                if (!response.ok) {
+                    throw new Error('data.json の読み込みに失敗しました。ファイルが存在するか確認してください。');
+                }
+                masterData = await response.json();
+                
+                // カテゴリの選択肢を生成
+                const catSelect = document.getElementById("categorySelect");
+                for (let cat in masterData) {
+                    let opt = document.createElement("option");
+                    opt.value = cat;
+                    opt.innerHTML = cat;
+                    catSelect.appendChild(opt);
+                }
+            } catch (error) {
+                const errorDiv = document.getElementById("errorMessage");
+                errorDiv.innerText = error.message;
+                errorDiv.classList.remove("hidden");
+            }
+        };
+
+        // カテゴリ変更時の処理
+        function updateItems() {
+            const catSelect = document.getElementById("categorySelect");
+            const itemSelect = document.getElementById("itemSelect");
+            const resCard = document.getElementById("resultCard");
+            
+            const selectedCat = catSelect.value;
+            itemSelect.innerHTML = '<option value="">-- クレーム・現象を選択 --</option>';
+            resCard.classList.add("hidden");
+
+            if (!selectedCat) {
+                itemSelect.disabled = true;
+                itemSelect.classList.replace("bg-white", "bg-slate-100");
+                return;
+            }
+
+            masterData[selectedCat].forEach(item => {
+                let opt = document.createElement("option");
+                opt.value = item.id;
+                opt.innerHTML = `No.${item.id} : ${item.text}`;
+                itemSelect.appendChild(opt);
+            });
+
+            itemSelect.disabled = false;
+            itemSelect.classList.replace("bg-slate-100", "bg-white");
+        }
+
+        // 結果表示の処理
+        function showResult() {
+            const catSelect = document.getElementById("categorySelect");
+            const itemSelect = document.getElementById("itemSelect");
+            const resCard = document.getElementById("resultCard");
+
+            const selectedCat = catSelect.value;
+            const selectedId = parseInt(itemSelect.value);
+
+            if (!selectedId) {
+                resCard.classList.add("hidden");
+                return;
+            }
+
+            const matchedItem = masterData[selectedCat].find(item => item.id === selectedId);
+
+            if (matchedItem) {
+                document.getElementById("txtPhenomenon").innerText = matchedItem.text;
+                document.getElementById("txtCause").innerText = matchedItem.cause;
+                document.getElementById("txtAction").innerText = matchedItem.action;
+                resCard.classList.remove("hidden");
+            }
+        }
+    </script>
+</body>
+</html>
